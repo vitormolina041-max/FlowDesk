@@ -63,6 +63,7 @@ function App() {
   const [activeStep, setActiveStep] = useState(1)
   const [generated, setGenerated] = useState(false)
   const [copied, setCopied] = useState(false)
+  const [copiedImageId, setCopiedImageId] = useState<string | null>(null)
   const [dragging, setDragging] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const previewRef = useRef<HTMLDivElement>(null)
@@ -179,6 +180,40 @@ function App() {
       setCopied(true)
       window.setTimeout(() => setCopied(false), 2200)
     }
+  }
+
+  function imageToPngBlob(src: string) {
+    return new Promise<Blob>((resolve, reject) => {
+      const image = new Image()
+      image.onload = () => {
+        const canvas = document.createElement('canvas')
+        canvas.width = image.naturalWidth
+        canvas.height = image.naturalHeight
+        const context = canvas.getContext('2d')
+
+        if (!context) {
+          reject(new Error('Não foi possível preparar a imagem.'))
+          return
+        }
+
+        context.drawImage(image, 0, 0)
+        canvas.toBlob((blob) => {
+          if (blob) resolve(blob)
+          else reject(new Error('Não foi possível converter a imagem para PNG.'))
+        }, 'image/png')
+      }
+      image.onerror = () => reject(new Error('Não foi possível carregar a imagem.'))
+      image.src = src
+    })
+  }
+
+  async function copyImage(image: ImageItem) {
+    const png = await imageToPngBlob(image.src)
+    await navigator.clipboard.write([
+      new ClipboardItem({ 'image/png': png }),
+    ])
+    setCopiedImageId(image.id)
+    window.setTimeout(() => setCopiedImageId(null), 2200)
   }
 
   function reset() {
@@ -382,6 +417,19 @@ function App() {
                 </div>
                 <div className="review-callout"><Icon>✦</Icon><div><strong>Card estruturado</strong><span>O conteúdo foi organizado para facilitar o entendimento de desenvolvimento e QA.</span></div></div>
                 <CardPreview form={form} criteria={criteria.filter(Boolean)} images={images} previewRef={previewRef} />
+                {images.length > 0 && (
+                  <div className="jira-image-actions">
+                    <div>
+                      <strong>Colar evidências no Jira</strong>
+                      <span>Depois de colar o card, copie e cole cada imagem abaixo no campo do Jira.</span>
+                    </div>
+                    {images.map((image, index) => (
+                      <button key={image.id} type="button" onClick={() => copyImage(image)}>
+                        {copiedImageId === image.id ? '✓ Imagem copiada!' : `▣ Copiar Print ${index + 1}`}
+                      </button>
+                    ))}
+                  </div>
+                )}
                 <div className="review-actions">
                   <button className="ghost-button" onClick={() => setActiveStep(3)}>← Editar detalhes</button>
                   <div>

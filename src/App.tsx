@@ -23,6 +23,33 @@ type FormData = {
   technicalNotes: string
 }
 
+type CardTemplate = {
+  context: string
+  objective: string
+  currentBehavior: string
+  expectedBehavior: string
+  scope: string
+  rules: string
+  reproduction: string
+  environment: string
+  technicalNotes: string
+  criteria: string[]
+}
+
+type QualityItem = {
+  label: string
+  complete: boolean
+  points: number
+  hint: string
+}
+
+type JiraConfig = {
+  siteUrl: string
+  projectKey: string
+  issueType: string
+  webhookUrl: string
+}
+
 const cardTypes: { name: CardType; icon: string; hint: string }[] = [
   { name: 'História', icon: '✦', hint: 'Nova necessidade do usuário' },
   { name: 'Bug', icon: '⚠', hint: 'Comportamento inesperado' },
@@ -52,6 +79,112 @@ const defaultCriteria = [
   'A implementação não deve causar regressão nos fluxos relacionados.',
 ]
 
+const initialJiraConfig: JiraConfig = {
+  siteUrl: '',
+  projectKey: '',
+  issueType: 'Task',
+  webhookUrl: '',
+}
+
+const cardTemplates: Record<CardType, CardTemplate> = {
+  História: {
+    context: 'Como [persona], preciso de [necessidade] para [valor esperado].\n\nContexto de negócio:\n- Quem é impactado?\n- Qual problema ou oportunidade originou a demanda?',
+    objective: 'Entregar valor ao usuário permitindo que ele realize a ação esperada com clareza e segurança.',
+    currentBehavior: 'Hoje, o usuário ainda não possui uma forma adequada de resolver essa necessidade.',
+    expectedBehavior: 'O usuário deve conseguir executar o fluxo principal e receber retorno claro de sucesso, erro ou pendência.',
+    scope: 'Dentro do escopo:\n- Fluxo principal da necessidade descrita.\n- Validações essenciais para uso.\n\nFora do escopo:\n- Mudanças em fluxos não relacionados.',
+    rules: 'Definir permissões, validações, exceções e mensagens obrigatórias.',
+    reproduction: '',
+    environment: '',
+    technicalNotes: 'Mapear dependências, integrações e impactos em fluxos existentes.',
+    criteria: [
+      'O usuário consegue realizar o fluxo principal sem apoio externo.',
+      'O sistema apresenta retorno claro para sucesso, erro ou pendência.',
+      'As regras de negócio definidas são respeitadas.',
+    ],
+  },
+  Bug: {
+    context: 'Foi identificado um comportamento inesperado que impacta o uso do sistema.\n\nImpacto observado:\n- Quem é afetado?\n- Em qual fluxo ocorre?\n- Qual consequência para o usuário ou operação?',
+    objective: 'Corrigir o comportamento para que o fluxo volte a funcionar conforme esperado, sem causar regressões.',
+    currentBehavior: 'Hoje, ao executar o fluxo informado, o sistema apresenta comportamento incorreto.',
+    expectedBehavior: 'O sistema deve executar o fluxo corretamente ou apresentar uma mensagem clara quando houver impedimento.',
+    scope: 'Dentro do escopo:\n- Correção do cenário informado.\n- Validação do fluxo afetado.\n\nFora do escopo:\n- Melhorias não relacionadas ao bug.',
+    rules: 'Confirmar quais regras deveriam permitir, bloquear ou validar a ação.',
+    reproduction: '1. Acessar o ambiente afetado.\n2. Executar o fluxo descrito.\n3. Observar o comportamento atual.\n4. Comparar com o comportamento esperado.',
+    environment: 'Ambiente:\nNavegador/dispositivo:\nUsuário/perfil:\nData aproximada:',
+    technicalNotes: 'Verificar logs, integrações, permissões e possíveis impactos em fluxos relacionados.',
+    criteria: [
+      'O cenário relatado é corrigido e pode ser validado pelo QA.',
+      'O sistema exibe mensagem clara quando a ação não puder ser concluída.',
+      'A correção não causa regressão nos fluxos relacionados.',
+    ],
+  },
+  Melhoria: {
+    context: 'Existe uma oportunidade de melhorar um fluxo já existente.\n\nProblema atual:\n- O que gera atrito?\n- Quem é impactado?\n- Qual ganho esperamos obter?',
+    objective: 'Melhorar a experiência, reduzir esforço operacional e tornar o fluxo mais claro para o usuário.',
+    currentBehavior: 'Hoje, o fluxo funciona, mas apresenta pontos de atrito ou baixa clareza.',
+    expectedBehavior: 'O fluxo deve ficar mais simples, previsível e fácil de validar.',
+    scope: 'Dentro do escopo:\n- Ajustes no fluxo existente.\n- Melhorias diretamente ligadas ao problema descrito.\n\nFora do escopo:\n- Redesenho completo sem necessidade confirmada.',
+    rules: 'Confirmar regras que não podem ser alteradas pela melhoria.',
+    reproduction: '',
+    environment: '',
+    technicalNotes: 'Avaliar impacto visual, operacional e técnico antes da implementação.',
+    criteria: [
+      'O usuário entende melhor como executar o fluxo.',
+      'A melhoria reduz esforço, dúvida ou retrabalho no cenário informado.',
+      'Fluxos relacionados continuam funcionando sem regressão.',
+    ],
+  },
+  'Tarefa técnica': {
+    context: 'Existe uma necessidade técnica necessária para sustentar evolução, correção ou manutenção do produto.',
+    objective: 'Executar a atividade técnica com baixo risco e impacto controlado.',
+    currentBehavior: 'Hoje, a base técnica possui uma limitação, pendência ou necessidade operacional.',
+    expectedBehavior: 'A solução técnica deve ser implementada sem alterar comportamentos de negócio não previstos.',
+    scope: 'Dentro do escopo:\n- Alteração técnica descrita.\n- Validação dos pontos impactados.\n\nFora do escopo:\n- Mudanças funcionais não relacionadas.',
+    rules: 'Não alterar regras de negócio sem validação do PO.',
+    reproduction: '',
+    environment: '',
+    technicalNotes: 'Descrever dependências, riscos, plano de validação e possível plano de rollback.',
+    criteria: [
+      'A alteração técnica é concluída conforme objetivo descrito.',
+      'Não há regressão funcional nos fluxos impactados.',
+      'Riscos e dependências são documentados.',
+    ],
+  },
+  Investigação: {
+    context: 'Há uma dúvida, comportamento ou hipótese que precisa ser investigada antes de definir a solução.',
+    objective: 'Entender causa, impacto e alternativas para orientar a próxima decisão.',
+    currentBehavior: 'Ainda não há diagnóstico suficiente para definir implementação.',
+    expectedBehavior: 'A investigação deve produzir uma conclusão clara, com evidências e próximos passos recomendados.',
+    scope: 'Dentro do escopo:\n- Levantar evidências.\n- Analisar causa provável.\n- Recomendar próximos passos.\n\nFora do escopo:\n- Implementar solução definitiva sem aprovação.',
+    rules: 'Registrar regras ou hipóteses que precisam ser confirmadas.',
+    reproduction: '',
+    environment: '',
+    technicalNotes: 'Listar logs, bases, integrações, hipóteses e pessoas consultadas.',
+    criteria: [
+      'A causa ou hipótese principal é documentada.',
+      'Evidências analisadas são registradas no card.',
+      'Próximos passos são recomendados com clareza.',
+    ],
+  },
+  'Débito técnico': {
+    context: 'Foi identificado um ponto técnico que aumenta custo, risco ou dificuldade de manutenção.',
+    objective: 'Reduzir risco técnico, melhorar manutenibilidade e sustentar futuras evoluções.',
+    currentBehavior: 'Hoje, a solução atual gera complexidade, fragilidade ou retrabalho técnico.',
+    expectedBehavior: 'A base deve ficar mais simples, confiável e preparada para manutenção ou evolução.',
+    scope: 'Dentro do escopo:\n- Ajuste técnico descrito.\n- Validação dos fluxos afetados.\n\nFora do escopo:\n- Mudanças funcionais sem relação com o débito.',
+    rules: 'Preservar comportamento funcional existente, salvo exceções aprovadas.',
+    reproduction: '',
+    environment: '',
+    technicalNotes: 'Documentar risco atual, proposta técnica, impacto esperado e plano de validação.',
+    criteria: [
+      'O débito técnico descrito é reduzido ou removido.',
+      'O comportamento funcional existente é preservado.',
+      'A solução melhora manutenção, confiabilidade ou clareza técnica.',
+    ],
+  },
+}
+
 function Icon({ children }: { children: ReactNode }) {
   return <span className="icon" aria-hidden="true">{children}</span>
 }
@@ -65,20 +198,117 @@ function App() {
   const [copied, setCopied] = useState(false)
   const [copiedImageId, setCopiedImageId] = useState<string | null>(null)
   const [dragging, setDragging] = useState(false)
+  const [jiraConfigOpen, setJiraConfigOpen] = useState(false)
+  const [jiraConfig, setJiraConfig] = useState<JiraConfig>(initialJiraConfig)
+  const [jiraStatus, setJiraStatus] = useState('')
   const fileInputRef = useRef<HTMLInputElement>(null)
   const previewRef = useRef<HTMLDivElement>(null)
 
-  const progress = useMemo(() => {
-    const required = [form.title, form.context, form.objective, form.expectedBehavior]
-    const completed = required.filter((value) => value.trim()).length
-    return Math.round((completed / required.length) * 100)
-  }, [form])
+  const qualityItems = useMemo<QualityItem[]>(() => {
+    const filledCriteria = criteria.filter((item) => item.trim())
+
+    return [
+      {
+        label: 'Título objetivo',
+        complete: form.title.trim().length >= 12,
+        points: 15,
+        hint: 'Use ação + objeto + resultado esperado.',
+      },
+      {
+        label: 'Contexto claro',
+        complete: form.context.trim().length >= 40,
+        points: 20,
+        hint: 'Explique origem, usuário afetado e motivo da demanda.',
+      },
+      {
+        label: 'Objetivo de negócio',
+        complete: form.objective.trim().length >= 30,
+        points: 15,
+        hint: 'Declare o resultado esperado para usuário ou operação.',
+      },
+      {
+        label: 'Comportamento esperado',
+        complete: form.expectedBehavior.trim().length >= 30,
+        points: 15,
+        hint: 'Descreva o que deve acontecer depois da entrega.',
+      },
+      {
+        label: 'Critérios de aceite',
+        complete: filledCriteria.length >= 2,
+        points: 15,
+        hint: 'Inclua ao menos dois itens validáveis pelo QA.',
+      },
+      {
+        label: 'Escopo e regras',
+        complete: Boolean(form.scope.trim() || form.rules.trim()),
+        points: 10,
+        hint: 'Defina limites, validações ou regras envolvidas.',
+      },
+      {
+        label: form.type === 'Bug' ? 'Reprodução e ambiente' : 'Riscos ou evidências',
+        complete: form.type === 'Bug'
+          ? Boolean(form.reproduction.trim() && form.environment.trim())
+          : Boolean(form.technicalNotes.trim() || images.length),
+        points: 10,
+        hint: form.type === 'Bug'
+          ? 'Informe passos e ambiente para o QA reproduzir.'
+          : 'Registre riscos, dependências ou evidências úteis.',
+      },
+    ]
+  }, [criteria, form, images.length])
+
+  const qualityScore = useMemo(() => {
+    const total = qualityItems.reduce((sum, item) => sum + item.points, 0)
+    const completed = qualityItems.filter((item) => item.complete).reduce((sum, item) => sum + item.points, 0)
+    return Math.round((completed / total) * 100)
+  }, [qualityItems])
+
+  const refinementQuestions = useMemo(() => {
+    const questions: string[] = []
+    const filledCriteria = criteria.filter((item) => item.trim())
+
+    if (!form.context.trim()) questions.push('Qual problema, necessidade ou oportunidade originou essa demanda?')
+    if (!form.objective.trim()) questions.push('Qual resultado de negócio ou usuário esperamos alcançar?')
+    if (!form.expectedBehavior.trim()) questions.push('O que deve acontecer para considerarmos a entrega correta?')
+    if (!form.scope.trim()) questions.push('O que está dentro e fora do escopo desta demanda?')
+    if (!form.rules.trim()) questions.push('Existe alguma regra de negócio, permissão ou validação obrigatória?')
+    if (filledCriteria.length < 2) questions.push('Quais critérios objetivos o QA deve validar?')
+    if (form.type === 'Bug' && !form.reproduction.trim()) questions.push('Quais passos reproduzem o problema?')
+    if (form.type === 'Bug' && !form.environment.trim()) questions.push('Em qual ambiente, navegador, dispositivo ou perfil o problema ocorre?')
+    if (!form.technicalNotes.trim() && !images.length) questions.push('Existe evidência, risco técnico, dependência ou print relevante?')
+
+    return questions.slice(0, 5)
+  }, [criteria, form, images.length])
 
   const isBug = form.type === 'Bug'
   const isInvestigation = form.type === 'Investigação'
 
   function updateField(field: keyof FormData, value: string) {
     setForm((current) => ({ ...current, [field]: value }))
+    setGenerated(false)
+  }
+
+  function updateJiraConfig(field: keyof JiraConfig, value: string) {
+    setJiraConfig((current) => ({ ...current, [field]: value }))
+    setJiraStatus('')
+  }
+
+  function applyTemplate() {
+    const template = cardTemplates[form.type]
+
+    setForm((current) => ({
+      ...current,
+      context: current.context || template.context,
+      objective: current.objective || template.objective,
+      currentBehavior: current.currentBehavior || template.currentBehavior,
+      expectedBehavior: current.expectedBehavior || template.expectedBehavior,
+      scope: current.scope || template.scope,
+      rules: current.rules || template.rules,
+      reproduction: current.reproduction || template.reproduction,
+      environment: current.environment || template.environment,
+      technicalNotes: current.technicalNotes || template.technicalNotes,
+    }))
+    setCriteria((current) => current.some((item) => item.trim()) ? current : template.criteria)
     setGenerated(false)
   }
 
@@ -182,6 +412,42 @@ function App() {
     }
   }
 
+  function jiraPayload() {
+    return {
+      summary: form.title || `Novo card - ${form.type}`,
+      description: plainText(),
+      projectKey: jiraConfig.projectKey,
+      issueType: jiraConfig.issueType || 'Task',
+      cardType: form.type,
+      siteUrl: jiraConfig.siteUrl,
+    }
+  }
+
+  async function copyJiraPayload() {
+    await navigator.clipboard.writeText(JSON.stringify(jiraPayload(), null, 2))
+    setJiraStatus('Payload do Jira copiado.')
+  }
+
+  async function sendToJiraIntegration() {
+    if (!jiraConfig.webhookUrl.trim()) {
+      setJiraStatus('Cole a URL do Webhook do Jira Automation.')
+      return
+    }
+
+    try {
+      const response = await fetch(jiraConfig.webhookUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(jiraPayload()),
+      })
+
+      if (!response.ok) throw new Error(`HTTP ${response.status}`)
+      setJiraStatus('Card enviado para o webhook do Jira Automation.')
+    } catch {
+      setJiraStatus('Não foi possível enviar. Verifique a URL do webhook e a regra no Jira.')
+    }
+  }
+
   function imageToPngBlob(src: string) {
     return new Promise<Blob>((resolve, reject) => {
       const image = new Image()
@@ -233,6 +499,7 @@ function App() {
         </div>
         <div className="header-actions">
           <span className="autosave"><span className="status-dot"></span> Salvo automaticamente</span>
+          <button className="jira-settings-button" onClick={() => setJiraConfigOpen(true)}>Jira</button>
           <button className="icon-button" title="Ajuda">?</button>
           <div className="avatar">PO</div>
         </div>
@@ -248,10 +515,10 @@ function App() {
           <div className="progress-card">
             <div>
               <span>Qualidade do briefing</span>
-              <strong>{progress}%</strong>
+              <strong>{qualityScore}%</strong>
             </div>
-            <div className="progress-track"><span style={{ width: `${progress}%` }}></span></div>
-            <small>{progress < 50 ? 'Preencha os campos principais para melhorar o card.' : progress < 100 ? 'Bom caminho. Faltam poucos detalhes.' : 'Briefing pronto para gerar.'}</small>
+            <div className="progress-track"><span style={{ width: `${qualityScore}%` }}></span></div>
+            <small>{qualityScore < 50 ? 'Preencha os campos principais para melhorar o card.' : qualityScore < 85 ? 'Bom caminho. Faltam poucos detalhes.' : 'Briefing pronto para refinamento.'}</small>
           </div>
         </section>
 
@@ -282,6 +549,13 @@ function App() {
                       <i>{form.type === type.name ? '✓' : ''}</i>
                     </button>
                   ))}
+                </div>
+                <div className="template-card">
+                  <div>
+                    <strong>Template recomendado</strong>
+                    <span>Preenche campos e critérios com uma estrutura base para {form.type.toLowerCase()}.</span>
+                  </div>
+                  <button className="ghost-button" onClick={applyTemplate}>Aplicar template</button>
                 </div>
                 <div className="step-footer">
                   <span></span>
@@ -416,6 +690,12 @@ function App() {
                   <div><h2>Revise antes de copiar</h2><p>Você ainda pode voltar e ajustar qualquer informação.</p></div>
                 </div>
                 <div className="review-callout"><Icon>✦</Icon><div><strong>Card estruturado</strong><span>O conteúdo foi organizado para facilitar o entendimento de desenvolvimento e QA.</span></div></div>
+                <RefinementPreview
+                  score={qualityScore}
+                  qualityItems={qualityItems}
+                  questions={refinementQuestions}
+                  cardType={form.type}
+                />
                 <CardPreview form={form} criteria={criteria.filter(Boolean)} images={images} previewRef={previewRef} />
                 {images.length > 0 && (
                   <div className="jira-image-actions">
@@ -463,10 +743,51 @@ function App() {
                   <li className={images.length ? 'complete' : ''}><span>{images.length ? '✓' : '○'}</span> Evidências ({images.length})</li>
                 </ul>
               </div>
+              <div className="quality-card">
+                <div className="quality-head">
+                  <span>Score de qualidade</span>
+                  <strong>{qualityScore}%</strong>
+                </div>
+                <div className="quality-meter"><span style={{ width: `${qualityScore}%` }}></span></div>
+                <ul>
+                  {qualityItems.map((item) => (
+                    <li key={item.label} className={item.complete ? 'complete' : ''}>
+                      <span>{item.complete ? '✓' : '○'}</span>
+                      <div>
+                        <strong>{item.label}</strong>
+                        {!item.complete && <small>{item.hint}</small>}
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+              <div className="refinement-card">
+                <div className="block-title">
+                  <div><h3>Refinamento</h3><p>Perguntas que ainda precisam de resposta.</p></div>
+                  <span className="optional">{refinementQuestions.length}</span>
+                </div>
+                {refinementQuestions.length ? (
+                  <ul>
+                    {refinementQuestions.map((question) => <li key={question}>{question}</li>)}
+                  </ul>
+                ) : (
+                  <p className="empty-state">Sem perguntas críticas no momento.</p>
+                )}
+              </div>
             </aside>
           )}
         </div>
       </main>
+      {jiraConfigOpen && (
+        <JiraConfigPanel
+          config={jiraConfig}
+          status={jiraStatus}
+          onChange={updateJiraConfig}
+          onClose={() => setJiraConfigOpen(false)}
+          onCopyPayload={copyJiraPayload}
+          onSend={sendToJiraIntegration}
+        />
+      )}
       <div className={`toast ${copied ? 'show' : ''}`}>Card copiado para a área de transferência.</div>
     </div>
   )
@@ -479,6 +800,116 @@ function Field({ label, hint, required, children }: { label: string; hint?: stri
       {hint && <small>{hint}</small>}
       {children}
     </label>
+  )
+}
+
+function RefinementPreview({ score, qualityItems, questions, cardType }: {
+  score: number
+  qualityItems: QualityItem[]
+  questions: string[]
+  cardType: CardType
+}) {
+  const strengths = qualityItems.filter((item) => item.complete).slice(0, 4)
+  const risks = qualityItems.filter((item) => !item.complete).slice(0, 4)
+  const priority = score < 50 ? 'Refinar antes de desenvolver' : score < 85 ? 'Pode ir para refinamento técnico' : 'Pronto para squad avaliar'
+
+  return (
+    <section className="refinement-preview">
+      <div className="refinement-preview-head">
+        <div>
+          <span>Prévia de refinamento</span>
+          <h3>{priority}</h3>
+        </div>
+        <strong>{score}%</strong>
+      </div>
+      <div className="refinement-preview-grid">
+        <div>
+          <h4>Pontos fortes</h4>
+          {strengths.length ? (
+            <ul>{strengths.map((item) => <li key={item.label}>{item.label}</li>)}</ul>
+          ) : (
+            <p>Nenhum ponto forte identificado ainda.</p>
+          )}
+        </div>
+        <div>
+          <h4>Riscos antes do Jira</h4>
+          {risks.length ? (
+            <ul>{risks.map((item) => <li key={item.label}>{item.hint}</li>)}</ul>
+          ) : (
+            <p>Sem riscos críticos de preenchimento.</p>
+          )}
+        </div>
+        <div>
+          <h4>Perguntas pendentes</h4>
+          {questions.length ? (
+            <ul>{questions.map((question) => <li key={question}>{question}</li>)}</ul>
+          ) : (
+            <p>Sem perguntas críticas no momento.</p>
+          )}
+        </div>
+      </div>
+      <div className="refinement-preview-footer">
+        <span>Tipo: {cardType}</span>
+        <span>{questions.length ? `${questions.length} pontos para refinar` : 'Sem pendência crítica'}</span>
+      </div>
+    </section>
+  )
+}
+
+function JiraConfigPanel({ config, status, onChange, onClose, onCopyPayload, onSend }: {
+  config: JiraConfig
+  status: string
+  onChange: (field: keyof JiraConfig, value: string) => void
+  onClose: () => void
+  onCopyPayload: () => void
+  onSend: () => void
+}) {
+  return (
+    <div className="jira-modal-backdrop" role="dialog" aria-modal="true" aria-label="Configurar Jira">
+      <section className="jira-modal">
+        <div className="jira-modal-head">
+          <div>
+            <span>Integração</span>
+            <h2>Configurar Jira</h2>
+          </div>
+          <button className="icon-button" onClick={onClose} aria-label="Fechar">×</button>
+        </div>
+        <div className="jira-warning">
+          Caminho mais rápido: crie uma regra no Jira Automation com gatilho "Incoming webhook", copie a URL gerada e cole aqui.
+        </div>
+        <div className="jira-setup-steps">
+          <strong>Como configurar no Jira</strong>
+          <ol>
+            <li>No projeto do Jira, acesse Project settings → Automation.</li>
+            <li>Crie uma regra com o gatilho Incoming webhook.</li>
+            <li>Adicione a ação Create issue.</li>
+            <li>Mapeie Summary com <code>{'{{webhookData.summary}}'}</code>.</li>
+            <li>Mapeie Description com <code>{'{{webhookData.description}}'}</code>.</li>
+          </ol>
+        </div>
+        <div className="two-columns">
+          <Field label="URL do Jira">
+            <input value={config.siteUrl} onChange={(event) => onChange('siteUrl', event.target.value)} placeholder="https://suaempresa.atlassian.net" />
+          </Field>
+          <Field label="Projeto">
+            <input value={config.projectKey} onChange={(event) => onChange('projectKey', event.target.value.toUpperCase())} placeholder="PROJ" />
+          </Field>
+        </div>
+        <div className="two-columns">
+          <Field label="Tipo de issue">
+            <input value={config.issueType} onChange={(event) => onChange('issueType', event.target.value)} placeholder="Task, Story, Bug..." />
+          </Field>
+          <Field label="URL do webhook">
+            <input value={config.webhookUrl} onChange={(event) => onChange('webhookUrl', event.target.value)} placeholder="https://automation.atlassian.com/pro/hooks/..." />
+          </Field>
+        </div>
+        <div className="jira-modal-actions">
+          <button className="ghost-button" onClick={onCopyPayload}>Copiar payload</button>
+          <button className="primary-button" onClick={onSend}>Enviar para Jira</button>
+        </div>
+        {status && <p className="jira-status">{status}</p>}
+      </section>
+    </div>
   )
 }
 
